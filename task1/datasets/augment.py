@@ -81,4 +81,6 @@ class CutMix :
                 new_data = {"image" : new_img, "daily" : new_daily, "gender" : new_gender, "embel" : new_embel}
                 aug_dataset.append(new_data)
 
+                del tar_img, new_img, new_data
+
         return aug_dataset
