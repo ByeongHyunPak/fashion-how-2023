@@ -136,13 +136,13 @@ def main(config, do_eval, save_path):
               f"loss_gender={epoch_losses[2]:.4f}, loss_embel={epoch_losses[3]:.4f}")
         
         # -- valid step
-        if do_eval:
-            with torch.no_grad() :
-                net.eval()
-                daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
-                for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
-                    for key in batch: batch[key] = batch[key].to(device)
-                    daily_logit, gender_logit, embel_logit = net(batch['image'])
+        # if do_eval:
+        #     with torch.no_grad() :
+        #         net.eval()
+        #         daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
+        #         for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
+        #             for key in batch: batch[key] = batch[key].to(device)
+        #             daily_logit, gender_logit, embel_logit = net(batch['image'])
 
 
         if ((epoch + 1) % 20 == 0):
