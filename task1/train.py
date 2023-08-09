@@ -53,9 +53,9 @@ from torch.utils.data import DataLoader
 import torch.utils.data.distributed
 
 import sys
-import subprocess
-subprocess.check_call(["sudo", sys.executable, "-m", "pip", "install", "python-dotenv"])
-subprocess.check_call(["sudo", sys.executable, "-m", "pip", "install", "wandb"])
+import subprocess as sp
+sp.check_call(["sudo", sys.executable, "-m", "pip", "install", "python-dotenv"])
+sp.check_call(["sudo", sys.executable, "-m", "pip", "install", "wandb"])
 import wandb
 from dotenv import load_dotenv
 
@@ -93,7 +93,7 @@ def main(config, do_eval, save_path):
     # -- get train dataset
     df_train = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_train.csv')
     train_dataset = Datasets()(df_train, config['img_size'], base_path=f'{DATA_PATH}/Train/')
-    train_dataset = Augment(config['augment'])(train_dataset)
+    #train_dataset = Augment(config['augment'])(train_dataset)
     train_dataset = Preprocess(config['preprocess'])(train_dataset)
     train_dataloader = DataLoader(
         train_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -190,6 +190,7 @@ def main(config, do_eval, save_path):
         if ((epoch + 1) % 20 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
+    wandb.finish()
 
 def acc(self, logit, label) :
     """
