@@ -1,0 +1,27 @@
+network:
+  name: Baseline_ResNet_emo
+  args:
+    resnetnum: 18
+    input_dim: 512
+    hidden_dim: 1024
+
+augment:
+  num_aug: 5
+
+preprocess:
+  back:
+    img_size: 224
+    background: 1
+  norm:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+
+img_size: 224
+
+lr:
+  enc: 1.e-3
+  dec: 1.e-3
+
+epochs: 100
+
+batch_size: 64
