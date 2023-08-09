@@ -22,6 +22,6 @@ lr:
   enc: 1.e-3
   dec: 1.e-3
 
-epochs: 100
+epochs: 10
 
 batch_size: 64
