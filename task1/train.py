@@ -52,6 +52,13 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.utils.data.distributed
 
+import sys
+import subprocess
+subprocess.check_call(["sudo", sys.executable, "-m", "pip", "install", "python-dotenv"])
+subprocess.check_call(["sudo", sys.executable, "-m", "pip", "install", "wandb"])
+import wandb
+from dotenv import load_dotenv
+
 DATA_PATH = '/content/data-task1'
 SAVE_PATH = '../../Models/task1'
 
@@ -109,6 +116,18 @@ def main(config, do_eval, save_path):
     optimizer_dec3 = torch.optim.Adam(net.classifier3.parameters(), lr=config['lr']['dec'])
     optimizers = [optimizer_enc, optimizer_dec1, optimizer_dec2, optimizer_dec3]
     criterion = nn.CrossEntropyLoss().to(device)
+
+    # -- wandb init
+    load_dotenv(dotenv_path="wandb.env")
+    WANDB_AUTH_KEY = os.getenv("WANDB_AUTH_KEY")
+    wandb.login(key=WANDB_AUTH_KEY)
+    wandb_name = save_path.split('/')[-1]
+    wandb.init(
+            entity="rond-7th",
+            project="fashion-how",
+            group=f"sub-task1",
+            name=wandb_name
+    )
 
     # -- start training
     for epoch in range(config['epochs']):
