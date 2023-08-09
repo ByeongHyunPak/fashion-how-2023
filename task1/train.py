@@ -150,22 +150,60 @@ def main(config, do_eval, save_path):
             for i, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
                 epoch_losses[i] = (epoch_losses[i] * i + l.item()) / (i + 1)
 
+        train_info = {
+            "train/loss": epoch_losses[0], 
+            "train/loss_daily" : epoch_losses[1], 
+            "train/loss_gender": epoch_losses[2],
+            "train/loss_embel" : epoch_losses[3]
+        }
+        wandb.log(train_info)
+
         print(f"[{epoch+1:0>3}/{config['epochs']}]",
               f"loss={epoch_losses[0]:.4f}, loss_daily={epoch_losses[1]:.4f}, ",
               f"loss_gender={epoch_losses[2]:.4f}, loss_embel={epoch_losses[3]:.4f}")
         
         # -- valid step
-        # if do_eval:
-        #     with torch.no_grad() :
-        #         net.eval()
-        #         daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
-        #         for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
-        #             for key in batch: batch[key] = batch[key].to(device)
-        #             daily_logit, gender_logit, embel_logit = net(batch['image'])
-
+        if do_eval:
+            eval_size = len(valid_dataloader) * config['batch_size']
+            with torch.no_grad() :
+                net.eval()
+                daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
+                for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
+                    for key in batch: batch[key] = batch[key].to(device)
+                    daily_logit, gender_logit, embel_logit = net(batch['image'])
+                    daily_acc += acc(daily_logit, batch['daily'].to(device))
+                    gender_acc += acc(gender_logit, batch['gender'].to(device))
+                    emb_acc += acc(emb_logit, batch['embellishment'].to(device))
+                daily_acc /= eval_size
+                gender_acc /= eval_size
+                emb_acc /= eval_size
+                acc = (daily_acc + gender_acc + emb_acc) / 3 
+                eval_info = {
+                    "eval/acc": acc, 
+                    "eval/acc_daily" : daily_acc, 
+                    "eval/acc_gender": gender_acc,
+                    "eval/acc_embel" : emb_acc
+                }
+                wandb.log(eval_info)
+            self._model.train()
 
         if ((epoch + 1) % 20 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
+    torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
+
+def acc(self, logit, label) :
+    """
+    logit을 기준으로 label과 비교해서 accuracy를 구하기 위한 함수
+    """
+    acc = 0.0
+    logit = logit.detach().cpu().numpy()
+    label = label.detach().cpu().numpy()
+
+    for j in range(len(logit)) :
+        if logit[j].argmax() == label[j].argmax() :
+            acc += 1.0
+
+    return acc
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
