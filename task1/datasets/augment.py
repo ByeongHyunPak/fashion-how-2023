@@ -1,84 +1,74 @@
 import copy
+import torch
 import numpy as np
-from skimage import transform
 from tqdm import tqdm
+from torchvision import transforms
+from torchvision.transforms import v2
+
+import time
 
 class Augment(object):
 
     def __init__(self, cfg):
-        self.cutMix = CutMix(cfg['num_aug'])
+        self.num_aug = cfg['num_aug']
+        self.cutmix = CutMix(cfg['cutmix'])
 
-    def __call__(self, dataset):
-        return self.cutMix(dataset)
+    def __call__(self, batch):
+        t = time.time()
+        batch_img = batch['image']
+        batch_dai = batch['daily']
+        batch_gen = batch['gender']
+        batch_emb = batch['embel']
+        print("time1:", f"{time.time()-t:2.4f} sec")
 
+        t = time.time()
+        for i in range(self.num_aug):
+            t0 = time.time()
+            aug_img, aug_dai, aug_gen, aug_emb = self.cutmix(batch)
+            print("cutmix:", f"{time.time()-t0:2.4f} sec")
+            batch_img = torch.cat([batch_img, aug_img])
+            batch_dai = torch.cat([batch_dai, aug_dai])
+            batch_gen = torch.cat([batch_gen, aug_gen])
+            batch_emb = torch.cat([batch_emb, aug_emb])
+        print("time2:", f"{time.time()-t:2.4f} sec")
 
-class CutMix :
-    """
-    CutMix 논문 (https://arxiv.org/abs/1905.04899) 을 참고해서 CutMix 데이터 증강 방법을 구현했습니다.
-    기존 이미지가 있으면 대상 이미지를 랜덤으로 선정하고 lambda 값을 임의로 지정해서 기존 이미지와 해당 이미지를 적절히 조합합니다. 
-    이미지가 조합되면서 해당 이미지에 대한 label도 섞인 이미지의 비율대로 조정이 됩니다.
-    """
-    def __init__(self, num_aug) :
-        self._num_aug = num_aug
+        batch['image'] = batch_img
+        batch['daily'] = batch_dai
+        batch['gender'] = batch_gen
+        batch['embel'] = batch_emb
 
-    def __call__(self, dataset) :
-        aug_dataset = []
+        return batch
+          
+class CutMix(object):
+    def __init__(self, cfg):
+        self.beta = cfg['beta']
 
-        for i, data in enumerate(tqdm(dataset, leave=False, desc='augmenting')) :
-            # source
-            org_img = data["image"]
-            org_h, org_w, _ = org_img.shape
-            org_daily = data["daily"]
-            org_gender = data["gender"]
-            org_embel = data["embel"]
+    def __call__(self, batch):
+        src_image = batch['image']
+        src_daily = batch['daily']
+        src_gender = batch['gender']
+        src_embel = batch['embel']
 
-            aug_dataset.append(data)
+        lam = np.random.beta(self.beta, self.beta)
+        rand_idx = torch.randperm(src_image.shape[0])
+        bbx1, bby1, bbx2, bby2, lam = crop_bbox(src_image.shape[-2:], lam)
 
-            rand_id_list = []
-            for j in range(self._num_aug) :
-                rand_id = np.random.randint(len(dataset))
-                while i == rand_id or i in rand_id_list :
-                    rand_id = np.random.randint(len(dataset))
-                rand_id_list.append(rand_id)
+        tgt_image = src_image.clone()
+        tgt_image[:, :, bby1:bby2, bbx1:bbx2] = src_image[rand_idx, :, bby1:bby2, bbx1:bbx2]
+        tgt_daily = src_daily * (1 - lam) + src_daily[rand_idx] * lam
+        tgt_gender = src_gender * (1 - lam) +  src_gender[rand_idx] * lam
+        tgt_embel = src_embel * (1 - lam) + src_embel[rand_idx] * lam
 
-                # target
-                tar_img = copy.deepcopy(dataset[rand_id]["image"])
-                tar_img = transform.resize(tar_img, (org_h, org_w), mode='constant')
-                
-                tar_daily = dataset[rand_id]["daily"]
-                tar_gender = dataset[rand_id]["gender"]
-                tar_embel = dataset[rand_id]["embel"]
+        return tgt_image, tgt_daily, tgt_gender, tgt_embel
 
-                lam = np.random.uniform(0, 1)
-                val = np.math.sqrt(1 - lam)
-                r_y = np.random.randint(0, org_h)
-                r_h = val * org_h
-                
-                r_x = np.random.randint(0, org_w)
-                r_w = val * org_w
+def crop_bbox(size, lam):
+    h, w = size
+    cut_ratio = np.sqrt(1 - lam)
+    cut_h = np.int(h * cut_ratio)
+    cut_w = np.int(w * cut_ratio)
+    bby1 = np.random.randint(h - cut_h); bby2 = bby1 + cut_h
+    bbx1 = np.random.randint(w - cut_w); bbx2 = bbx1 + cut_w
+    lam = (cut_h * cut_w) / (h * w)
+    return bbx1, bby1, bbx2, bby2, lam
 
-                # width
-                x1 = round(r_x - (r_w / 2))
-                x1 = x1 if x1 > 0 else 0
-                x2 = round(r_x + (r_w / 2))
-                x2 = x2 if x2 < org_w else org_w
-                
-                # height
-                y1 = round(r_y - (r_h / 2))
-                y1 = y1 if y1 > 0 else 0
-                y2 = round(r_y + (r_y / 2))
-                y2 = y2 if y2 < org_h else org_h
-
-                new_img = copy.deepcopy(org_img)
-                new_img[y1:y2, x1:x2, :] = tar_img[y1:y2, x1:x2, :]
-                
-                co = 1 - ((x2-x1) * (y2-y1) / (org_h * org_w))
-
-                new_daily = co * org_daily + (1-co) * tar_daily
-                new_gender = co * org_gender + (1-co) * tar_gender
-                new_embel = co * org_embel + (1-co) * tar_embel
-
-                new_data = {"image" : new_img, "daily" : new_daily, "gender" : new_gender, "embel" : new_embel}
-                aug_dataset.append(new_data)
-
-        return aug_dataset
+    

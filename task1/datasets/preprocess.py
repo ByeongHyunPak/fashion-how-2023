@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 from tqdm import tqdm
 from torchvision import transforms
@@ -13,18 +14,14 @@ class Preprocess(object):
             mean=cfg['norm']['mean'],
             std=cfg['norm']['std']
         )
-        self.to_tensor = transforms.ToTensor()
         
     def __call__(self, dataset):
 
         for data in tqdm(dataset, leave=False, desc='preprocessing') :
             img = data["image"]
             img = self.background(img)
-            img = self.to_tensor(img)
             img = self.normalize(img)
-            img = img.float()
             data["image"] = img
-            
         return dataset
         
 
@@ -38,22 +35,22 @@ class BackGround(object):
     """
 
     def __init__(self, background, img_size):
-        self.background = background
+        self.background = torch.tensor(background)
         self.img_size = img_size
 
     def __call__(self, img):
-        height, width, _ = img.shape
+        _, height, width= img.shape
 
-        new_img = np.zeros((self.img_size, self.img_size, 3))
-        new_img += self.background
+        new_img = torch.zeros((3, self.img_size, self.img_size))
+        new_img += self.background.view(-1, 1, 1)
 
         if height != width :
             if width == self.img_size :
                 height_start = int((self.img_size - height) / 2)
-                new_img[height_start:height_start+height, :, :] = img
+                new_img[:, height_start:height_start+height, :] = img
             else :
                 width_start = int((self.img_size - width) / 2)
-                new_img[:, width_start:width_start+width, :] = img
+                new_img[:, :, width_start:width_start+width] = img
         else :
             new_img = img
 

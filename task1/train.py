@@ -49,8 +49,11 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import torch.utils.data.distributed
+from torch.utils.data import DataLoader
+from torchvision.transforms import v2
+
+import time
 
 import sys
 import subprocess as sp
@@ -92,8 +95,7 @@ def main(config, do_eval, save_path):
 
     # -- get train dataset
     df_train = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_train.csv')
-    train_dataset = Datasets()(df_train, config['img_size'], base_path=f'{DATA_PATH}/Train/')
-    #train_dataset = Augment(config['augment'])(train_dataset)
+    train_dataset = Datasets(df_train, config['img_size'], f'{DATA_PATH}/Train/').get_dataset()
     train_dataset = Preprocess(config['preprocess'])(train_dataset)
     train_dataloader = DataLoader(
         train_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -102,8 +104,7 @@ def main(config, do_eval, save_path):
     # -- get valid dataset
     if do_eval:
         df_valid = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_valid.csv')
-        valid_dataset = Datasets()(df_valid, config['img_size'], base_path=f'{DATA_PATH}/Valid/')
-        valid_dataset = Augment(config['augment'])(valid_dataset)
+        valid_dataset = Datasets()(df_valid, config['img_size'], f'{DATA_PATH}/Valid/').get_dataset()
         valid_dataset = Preprocess(config['preprocess'])(valid_dataset)
         valid_dataloader = DataLoader(
             valid_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -130,6 +131,7 @@ def main(config, do_eval, save_path):
     )
 
     # -- start training
+    batch_augment = Augment(config['augment'])
     for epoch in range(config['epochs']):
         # -- train step
         net.train()
@@ -139,16 +141,22 @@ def main(config, do_eval, save_path):
             for key in batch: batch[key] = batch[key].to(device)
             for optim in optimizers: optim.zero_grad()
 
+            with torch.no_grad() :
+                batch = batch_augment(batch)
             out_daily, out_gender, out_embel = net(batch['image'])
             loss_daily = criterion(out_daily, batch['daily'])
             loss_gender = criterion(out_gender, batch['gender'])
             loss_embel = criterion(out_embel, batch['embel'])
+            t = time.time()
             loss = loss_daily + loss_gender + loss_embel
             loss.backward()
 
             for optim in optimizers: optim.step()
-            for i, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
-                epoch_losses[i] = (epoch_losses[i] * i + l.item()) / (i + 1)
+            for j, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
+                epoch_losses[j] = (epoch_losses[j] * i + l.item()) / (i + 1)
+        
+            if i == 5:
+                exit()
 
         train_info = {
             "train/loss": epoch_losses[0], 

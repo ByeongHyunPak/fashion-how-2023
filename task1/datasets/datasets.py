@@ -1,30 +1,24 @@
+import multiprocessing
+import parmap
 import random
+import torch
 import numpy as np
 from tqdm import tqdm
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-from skimage import io, transform, color
 
 class BBoxCrop(object):
 
     def __call__(self, image, x_1, y_1, x_2, y_2):
-        h, w = image.shape[:2]
-
-        top = y_1
-        left = x_1
-        new_h = y_2 - y_1
-        new_w = x_2 - x_1
-
-        image = image[top: top + new_h,
-                      left: left + new_w]
-
+        _, h, w = image.shape
+        image = image[:, y_1: y_2, x_1: x_2]
         return image
 
 class CropResize(object):
     
     def __call__(self, image, img_size):
-        h, w = image.shape[:2]
-
+        _, h, w = image.shape
         if isinstance(img_size, int):
             if h > w:
                 new_h, new_w = img_size, img_size * w / h   
@@ -33,10 +27,7 @@ class CropResize(object):
         else:
             new_h, new_w = img_size
         new_h, new_w = int(new_h), int(new_w)
-
-        image = transform.resize(image, (new_h, new_w), mode='constant')
-
-        return image
+        return transforms.Resize((new_h, new_w))(image)
 
 class ETRIDataset_emo(Dataset):
     
@@ -49,9 +40,8 @@ class ETRIDataset_emo(Dataset):
       
     def __getitem__(self, i):
         row = self.df.iloc[i]
-        image = io.imread(self.base_path + row['image_name'])
-        if image.shape[2] != 3:
-            image = color.rgba2rgb(image)
+        image = transforms.ToTensor()(
+            Image.open(self.base_path + row['image_name']).convert('RGB'))
 
         bbox_xmin = row['BBox_xmin']
         bbox_ymin = row['BBox_ymin']
@@ -61,9 +51,9 @@ class ETRIDataset_emo(Dataset):
         image = self.bbox_crop(image, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
         image = self.crop_resize(image, self.img_size)
 
-        daily = np.zeros(len(self.df["Daily"].unique()))
-        gender = np.zeros(len(self.df["Gender"].unique()))
-        embel = np.zeros(len(self.df["Embellishment"].unique()))
+        daily = torch.zeros(len(self.df["Daily"].unique()))
+        gender = torch.zeros(len(self.df["Gender"].unique()))
+        embel = torch.zeros(len(self.df["Embellishment"].unique()))
 
         daily[row["Daily"]] = 1.0
         gender[row["Gender"]] = 1.0
@@ -81,11 +71,25 @@ class ETRIDataset_emo(Dataset):
         return len(self.df)
 
 class Datasets(object):
+    def __init__(self, df, img_size, base_path):
+        self.data = ETRIDataset_emo(df, img_size, base_path)
+    
+    def get_data(self, i):
+        return self.data[i]
 
-    def __call__(self, df, img_size, base_path):
+    def get_dataset(self):
         dataset = []
-        get_data = ETRIDataset_emo(df, img_size, base_path)
-        for data in tqdm(get_data, leave=False, desc='dataset loading'):
+        for data in tqdm(self.data, leave=False, desc='dataset loading'):
             dataset.append(data)
+        random.shuffle(dataset)
+        return dataset      
+    
+    def get_dataset_parallel(self):
+        num_cores = multiprocessing.cpu_count()
+        dataset = parmap.map(self.get_data, 
+            range(len(self.data)), 
+            pm_pbar=True, 
+            pm_processes=num_cores
+        )
         random.shuffle(dataset)
         return dataset
