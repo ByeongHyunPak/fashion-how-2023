@@ -187,7 +187,7 @@ def main(config, do_eval, save_path):
                 wandb.log(eval_info)
             self._model.train()
 
-        if ((epoch + 1) % 20 == 0):
+        if ((epoch + 1) % 10 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     wandb.finish()
