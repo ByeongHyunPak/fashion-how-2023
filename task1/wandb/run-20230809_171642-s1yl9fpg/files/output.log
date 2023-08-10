@@ -1,0 +1,52 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+training:   3%|██▊                                                                                                  | 5/176 [00:01<00:36,  4.69it/s]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+training:  99%|█████████████████████████████████████████████████████████████████████████████████████████████████▉ | 174/176 [00:37<00:00,  4.73it/s]
+
+
+
+
+
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 228, in <module>
+    main(config, do_eval, save_path)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 151, in main
+    epoch_losses[i] = (epoch_losses[i] * i + l.item()) / (i + 1)
+KeyboardInterrupt

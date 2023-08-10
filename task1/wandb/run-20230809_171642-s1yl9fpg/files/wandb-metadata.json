@@ -1,0 +1,68 @@
+{
+    "os": "Linux-5.15.109+-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-08-09T17:16:42.702431",
+    "startedAt": "2023-08-09T17:16:42.044110",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--cfg",
+        "configs/Baseline_ResNet_18.yaml"
+    ],
+    "state": "running",
+    "program": "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py",
+    "codePath": "task1/train.py",
+    "git": {
+        "remote": "https://github.com/ByeongHyunPak/fashion-how-2023.git",
+        "commit": "a52dc5db0d719cacf08e35dfcab014db8e86286f"
+    },
+    "email": "woobj903@postech.ac.kr",
+    "root": "/content/drive/MyDrive/fashion-how-2023/Tasks",
+    "host": "2575a264cd12",
+    "username": "root",
+    "executable": "/usr/bin/python3",
+    "cpu_count": 2,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 2299.998,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2299.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2299.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2299.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2299.998,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "total": 166.77415084838867,
+        "used": 47.67509460449219
+    },
+    "gpu": "Tesla T4",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Tesla T4",
+            "memory_total": 16106127360
+        }
+    ],
+    "memory": {
+        "total": 25.45135498046875
+    }
+}

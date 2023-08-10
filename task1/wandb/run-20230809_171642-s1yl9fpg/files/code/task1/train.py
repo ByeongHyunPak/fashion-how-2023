@@ -49,11 +49,8 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
-import torch.utils.data.distributed
 from torch.utils.data import DataLoader
-from torchvision.transforms import v2
-
-import time
+import torch.utils.data.distributed
 
 import sys
 import subprocess as sp
@@ -95,7 +92,8 @@ def main(config, do_eval, save_path):
 
     # -- get train dataset
     df_train = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_train.csv')
-    train_dataset = Datasets(df_train, config['img_size'], f'{DATA_PATH}/Train/').get_dataset()
+    train_dataset = Datasets()(df_train, config['img_size'], base_path=f'{DATA_PATH}/Train/')
+    #train_dataset = Augment(config['augment'])(train_dataset)
     train_dataset = Preprocess(config['preprocess'])(train_dataset)
     train_dataloader = DataLoader(
         train_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -104,7 +102,8 @@ def main(config, do_eval, save_path):
     # -- get valid dataset
     if do_eval:
         df_valid = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_valid.csv')
-        valid_dataset = Datasets(df_valid, config['img_size'], f'{DATA_PATH}/Valid/').get_dataset()
+        valid_dataset = Datasets()(df_valid, config['img_size'], base_path=f'{DATA_PATH}/Valid/')
+        valid_dataset = Augment(config['augment'])(valid_dataset)
         valid_dataset = Preprocess(config['preprocess'])(valid_dataset)
         valid_dataloader = DataLoader(
             valid_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -131,38 +130,33 @@ def main(config, do_eval, save_path):
     )
 
     # -- start training
-    batch_augment = Augment(config['augment'])
     for epoch in range(config['epochs']):
         # -- train step
         net.train()
         epoch_losses = [0, 0, 0, 0]
-        epoch_eval_best_acc = 0.
         for i, batch in enumerate(tqdm(train_dataloader, leave=False, desc='training')):
             
             for key in batch: batch[key] = batch[key].to(device)
             for optim in optimizers: optim.zero_grad()
 
-            with torch.no_grad() :
-                batch = batch_augment(batch)
             out_daily, out_gender, out_embel = net(batch['image'])
             loss_daily = criterion(out_daily, batch['daily'])
             loss_gender = criterion(out_gender, batch['gender'])
             loss_embel = criterion(out_embel, batch['embel'])
-            t = time.time()
             loss = loss_daily + loss_gender + loss_embel
             loss.backward()
 
             for optim in optimizers: optim.step()
-            for j, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
-                epoch_losses[j] = (epoch_losses[j] * i + l.item()) / (i + 1)
+            for i, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
+                epoch_losses[i] = (epoch_losses[i] * i + l.item()) / (i + 1)
 
-            train_info = {
-                "train/loss": loss, 
-                "train/loss_daily" : loss_daily, 
-                "train/loss_gender": loss_gender,
-                "train/loss_embel" : loss_embel
-            }
-            wandb.log(train_info)
+        train_info = {
+            "train/loss": epoch_losses[0], 
+            "train/loss_daily" : epoch_losses[1], 
+            "train/loss_gender": epoch_losses[2],
+            "train/loss_embel" : epoch_losses[3]
+        }
+        wandb.log(train_info)
 
         print(f"[{epoch+1:0>3}/{config['epochs']}]",
               f"loss={epoch_losses[0]:.4f}, loss_daily={epoch_losses[1]:.4f}, ",
@@ -173,35 +167,30 @@ def main(config, do_eval, save_path):
             eval_size = len(valid_dataloader) * config['batch_size']
             with torch.no_grad() :
                 net.eval()
-                daily_acc, gender_acc, embel_acc = 0.0, 0.0, 0.0
+                daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
                 for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
                     for key in batch: batch[key] = batch[key].to(device)
                     daily_logit, gender_logit, embel_logit = net(batch['image'])
                     daily_acc += acc(daily_logit, batch['daily'].to(device))
                     gender_acc += acc(gender_logit, batch['gender'].to(device))
-                    embel_acc += acc(embel_logit, batch['embel'].to(device))
+                    emb_acc += acc(emb_logit, batch['embellishment'].to(device))
                 daily_acc /= eval_size
                 gender_acc /= eval_size
-                embel_acc /= eval_size
-                acc = (daily_acc + gender_acc + embel_acc) / 3 
-                if acc > epoch_eval_best_acc:
-                    epoch_eval_best_acc = acc
-                    torch.save(net.state_dict(), save_path + '/model_best_' + str(epoch + 1) + '.pkl')
+                emb_acc /= eval_size
+                acc = (daily_acc + gender_acc + emb_acc) / 3 
                 eval_info = {
                     "eval/acc": acc, 
                     "eval/acc_daily" : daily_acc, 
                     "eval/acc_gender": gender_acc,
-                    "eval/acc_embel" : embel_acc
+                    "eval/acc_embel" : emb_acc
                 }
                 wandb.log(eval_info)
-            net.train()
+            self._model.train()
 
-        if ((epoch + 1) % 10 == 0):
+        if ((epoch + 1) % 20 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
-
-    torch.save(net.state_dict(), save_path + '/model_last_' + str(epoch + 1) + '.pkl')
+    torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     wandb.finish()
-
 
 def acc(self, logit, label) :
     """
