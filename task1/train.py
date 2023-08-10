@@ -192,6 +192,7 @@ def main(config, do_eval, save_path):
     torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     wandb.finish()
 
+
 def acc(self, logit, label) :
     """
     logit을 기준으로 label과 비교해서 accuracy를 구하기 위한 함수
