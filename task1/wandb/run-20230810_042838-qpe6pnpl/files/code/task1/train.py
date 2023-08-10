@@ -155,14 +155,17 @@ def main(config, do_eval, save_path):
             for optim in optimizers: optim.step()
             for j, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
                 epoch_losses[j] = (epoch_losses[j] * i + l.item()) / (i + 1)
+        
+            if i == 5:
+                exit()
 
-            train_info = {
-                "train/loss": loss, 
-                "train/loss_daily" : loss_daily, 
-                "train/loss_gender": loss_gender,
-                "train/loss_embel" : loss_embel
-            }
-            wandb.log(train_info)
+        train_info = {
+            "train/loss": epoch_losses[0], 
+            "train/loss_daily" : epoch_losses[1], 
+            "train/loss_gender": epoch_losses[2],
+            "train/loss_embel" : epoch_losses[3]
+        }
+        wandb.log(train_info)
 
         print(f"[{epoch+1:0>3}/{config['epochs']}]",
               f"loss={epoch_losses[0]:.4f}, loss_daily={epoch_losses[1]:.4f}, ",
@@ -173,17 +176,17 @@ def main(config, do_eval, save_path):
             eval_size = len(valid_dataloader) * config['batch_size']
             with torch.no_grad() :
                 net.eval()
-                daily_acc, gender_acc, embel_acc = 0.0, 0.0, 0.0
+                daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
                 for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
                     for key in batch: batch[key] = batch[key].to(device)
                     daily_logit, gender_logit, embel_logit = net(batch['image'])
                     daily_acc += acc(daily_logit, batch['daily'].to(device))
                     gender_acc += acc(gender_logit, batch['gender'].to(device))
-                    embel_acc += acc(embel_logit, batch['embel'].to(device))
+                    emb_acc += acc(emb_logit, batch['embellishment'].to(device))
                 daily_acc /= eval_size
                 gender_acc /= eval_size
-                embel_acc /= eval_size
-                acc = (daily_acc + gender_acc + embel_acc) / 3 
+                emb_acc /= eval_size
+                acc = (daily_acc + gender_acc + emb_acc) / 3 
                 if acc > epoch_eval_best_acc:
                     epoch_eval_best_acc = acc
                     torch.save(net.state_dict(), save_path + '/model_best_' + str(epoch + 1) + '.pkl')
@@ -191,15 +194,14 @@ def main(config, do_eval, save_path):
                     "eval/acc": acc, 
                     "eval/acc_daily" : daily_acc, 
                     "eval/acc_gender": gender_acc,
-                    "eval/acc_embel" : embel_acc
+                    "eval/acc_embel" : emb_acc
                 }
                 wandb.log(eval_info)
-            net.train()
+            self._model.train()
 
         if ((epoch + 1) % 10 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
-
-    torch.save(net.state_dict(), save_path + '/model_last_' + str(epoch + 1) + '.pkl')
+    torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
     wandb.finish()
 
 

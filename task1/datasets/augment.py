@@ -14,23 +14,17 @@ class Augment(object):
         self.cutmix = CutMix(cfg['cutmix'])
 
     def __call__(self, batch):
-        t = time.time()
         batch_img = batch['image']
         batch_dai = batch['daily']
         batch_gen = batch['gender']
         batch_emb = batch['embel']
-        print("time1:", f"{time.time()-t:2.4f} sec")
 
-        t = time.time()
         for i in range(self.num_aug):
-            t0 = time.time()
             aug_img, aug_dai, aug_gen, aug_emb = self.cutmix(batch)
-            print("cutmix:", f"{time.time()-t0:2.4f} sec")
             batch_img = torch.cat([batch_img, aug_img])
             batch_dai = torch.cat([batch_dai, aug_dai])
             batch_gen = torch.cat([batch_gen, aug_gen])
             batch_emb = torch.cat([batch_emb, aug_emb])
-        print("time2:", f"{time.time()-t:2.4f} sec")
 
         batch['image'] = batch_img
         batch['daily'] = batch_dai

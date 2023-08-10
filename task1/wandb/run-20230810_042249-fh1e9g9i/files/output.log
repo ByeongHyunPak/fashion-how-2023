@@ -1,0 +1,28 @@
+
+training:   0%|                                                                                                                                          | 0/176 [00:00<?, ?it/s]
+time1: 0.0000 sec
+cutmix: 0.0209 sec
+cutmix: 0.0538 sec
+cutmix: 0.0347 sec
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 241, in <module>
+    main(config, do_eval, save_path)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 147, in main
+    out_daily, out_gender, out_embel = net(batch['image'])
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/networks/resnet_emo.py", line 86, in forward
+    feat = self.encoder.front(x)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/networks/resnet_emo.py", line 64, in front
+    return self.model_front(x)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/container.py", line 217, in forward
+    input = module(input)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/container.py", line 217, in forward
+    input = module(input)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+KeyboardInterrupt

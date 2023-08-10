@@ -1,0 +1,31 @@
+diff --git a/task1/train.py b/task1/train.py
+index fe92f2f..ca98fe3 100755
+--- a/task1/train.py
++++ b/task1/train.py
+@@ -104,7 +104,7 @@ def main(config, do_eval, save_path):
+     # -- get valid dataset
+     if do_eval:
+         df_valid = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_valid.csv')
+-        valid_dataset = Datasets()(df_valid, config['img_size'], f'{DATA_PATH}/Valid/').get_dataset()
++        valid_dataset = Datasets(df_valid, config['img_size'], f'{DATA_PATH}/Valid/').get_dataset()
+         valid_dataset = Preprocess(config['preprocess'])(valid_dataset)
+         valid_dataloader = DataLoader(
+             valid_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
+@@ -136,6 +136,7 @@ def main(config, do_eval, save_path):
+         # -- train step
+         net.train()
+         epoch_losses = [0, 0, 0, 0]
++        epoch_eval_best_acc = 0.
+         for i, batch in enumerate(tqdm(train_dataloader, leave=False, desc='training')):
+             
+             for key in batch: batch[key] = batch[key].to(device)
+@@ -186,6 +187,9 @@ def main(config, do_eval, save_path):
+                 gender_acc /= eval_size
+                 emb_acc /= eval_size
+                 acc = (daily_acc + gender_acc + emb_acc) / 3 
++                if acc > epoch_eval_best_acc:
++                    epoch_eval_best_acc = acc
++                    torch.save(net.state_dict(), save_path + '/model_best_' + str(epoch + 1) + '.pkl')
+                 eval_info = {
+                     "eval/acc": acc, 
+                     "eval/acc_daily" : daily_acc, 

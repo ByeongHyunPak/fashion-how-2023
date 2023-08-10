@@ -1,0 +1,62 @@
+{
+    "os": "Linux-5.15.109+-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-08-10T04:28:39.233708",
+    "startedAt": "2023-08-10T04:28:38.581392",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--cfg",
+        "configs/Baseline_ResNet_18.yaml",
+        "--eval",
+        "1"
+    ],
+    "state": "running",
+    "program": "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py",
+    "codePath": "task1/train.py",
+    "git": {
+        "remote": "https://github.com/ByeongHyunPak/fashion-how-2023.git",
+        "commit": "d4307346d8e66270e917c7ddf1d217b886230bc0"
+    },
+    "email": "byeonghyun.pak@gmail.com",
+    "root": "/content/drive/MyDrive/fashion-how-2023/Tasks",
+    "host": "9ab03e0781d6",
+    "username": "root",
+    "executable": "/usr/bin/python3",
+    "cpu_count": 2,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 2199.998,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2199.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2199.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2199.998,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2199.998,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "total": 225.83275985717773,
+        "used": 35.70883560180664
+    },
+    "memory": {
+        "total": 25.45136260986328
+    }
+}
