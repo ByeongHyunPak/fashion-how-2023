@@ -52,6 +52,13 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.utils.data.distributed
 
+import sys
+import subprocess as sp
+sp.check_call(["sudo", sys.executable, "-m", "pip", "install", "python-dotenv"])
+sp.check_call(["sudo", sys.executable, "-m", "pip", "install", "wandb"])
+import wandb
+from dotenv import load_dotenv
+
 DATA_PATH = '/content/data-task1'
 SAVE_PATH = '../../Models/task1'
 
@@ -86,7 +93,7 @@ def main(config, do_eval, save_path):
     # -- get train dataset
     df_train = pd.read_csv(f'{DATA_PATH}/info_etri20_emotion_train.csv')
     train_dataset = Datasets()(df_train, config['img_size'], base_path=f'{DATA_PATH}/Train/')
-    train_dataset = Augment(config['augment'])(train_dataset)
+    #train_dataset = Augment(config['augment'])(train_dataset)
     train_dataset = Preprocess(config['preprocess'])(train_dataset)
     train_dataloader = DataLoader(
         train_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=0)
@@ -110,6 +117,18 @@ def main(config, do_eval, save_path):
     optimizers = [optimizer_enc, optimizer_dec1, optimizer_dec2, optimizer_dec3]
     criterion = nn.CrossEntropyLoss().to(device)
 
+    # -- wandb init
+    load_dotenv(dotenv_path="wandb.env")
+    WANDB_AUTH_KEY = os.getenv("WANDB_AUTH_KEY")
+    wandb.login(key=WANDB_AUTH_KEY)
+    wandb_name = save_path.split('/')[-1]
+    wandb.init(
+            entity="rond-7th",
+            project="fashion-how",
+            group=f"sub-task1",
+            name=wandb_name
+    )
+
     # -- start training
     for epoch in range(config['epochs']):
         # -- train step
@@ -131,22 +150,61 @@ def main(config, do_eval, save_path):
             for i, l in enumerate([loss, loss_daily, loss_gender, loss_embel]):
                 epoch_losses[i] = (epoch_losses[i] * i + l.item()) / (i + 1)
 
+        train_info = {
+            "train/loss": epoch_losses[0], 
+            "train/loss_daily" : epoch_losses[1], 
+            "train/loss_gender": epoch_losses[2],
+            "train/loss_embel" : epoch_losses[3]
+        }
+        wandb.log(train_info)
+
         print(f"[{epoch+1:0>3}/{config['epochs']}]",
               f"loss={epoch_losses[0]:.4f}, loss_daily={epoch_losses[1]:.4f}, ",
               f"loss_gender={epoch_losses[2]:.4f}, loss_embel={epoch_losses[3]:.4f}")
         
         # -- valid step
-        # if do_eval:
-        #     with torch.no_grad() :
-        #         net.eval()
-        #         daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
-        #         for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
-        #             for key in batch: batch[key] = batch[key].to(device)
-        #             daily_logit, gender_logit, embel_logit = net(batch['image'])
+        if do_eval:
+            eval_size = len(valid_dataloader) * config['batch_size']
+            with torch.no_grad() :
+                net.eval()
+                daily_acc, gender_acc, emb_acc = 0.0, 0.0, 0.0
+                for i, batch in enumerate(tqdm(valid_dataloader, leave=False, desc='evaluating')):
+                    for key in batch: batch[key] = batch[key].to(device)
+                    daily_logit, gender_logit, embel_logit = net(batch['image'])
+                    daily_acc += acc(daily_logit, batch['daily'].to(device))
+                    gender_acc += acc(gender_logit, batch['gender'].to(device))
+                    emb_acc += acc(emb_logit, batch['embellishment'].to(device))
+                daily_acc /= eval_size
+                gender_acc /= eval_size
+                emb_acc /= eval_size
+                acc = (daily_acc + gender_acc + emb_acc) / 3 
+                eval_info = {
+                    "eval/acc": acc, 
+                    "eval/acc_daily" : daily_acc, 
+                    "eval/acc_gender": gender_acc,
+                    "eval/acc_embel" : emb_acc
+                }
+                wandb.log(eval_info)
+            self._model.train()
 
-
-        if ((epoch + 1) % 20 == 0):
+        if ((epoch + 1) % 10 == 0):
             torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
+    torch.save(net.state_dict(), save_path + '/model_' + str(epoch + 1) + '.pkl')
+    wandb.finish()
+
+def acc(self, logit, label) :
+    """
+    logit을 기준으로 label과 비교해서 accuracy를 구하기 위한 함수
+    """
+    acc = 0.0
+    logit = logit.detach().cpu().numpy()
+    label = label.detach().cpu().numpy()
+
+    for j in range(len(logit)) :
+        if logit[j].argmax() == label[j].argmax() :
+            acc += 1.0
+
+    return acc
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
