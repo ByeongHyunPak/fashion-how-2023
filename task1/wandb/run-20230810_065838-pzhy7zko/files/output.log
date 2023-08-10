@@ -1,0 +1,44 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 242, in <module>
+    main(config, do_eval, save_path)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 153, in main
+    if acc > epoch_eval_best_acc:
+UnboundLocalError: local variable 'epoch_eval_best_acc' referenced before assignment

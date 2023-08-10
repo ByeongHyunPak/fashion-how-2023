@@ -1,0 +1,1 @@
+{"train/loss": 5.056252479553223, "train/loss_daily": 1.8273581266403198, "train/loss_gender": 1.8083510398864746, "train/loss_embel": 1.4205433130264282, "_timestamp": 1691649982.4797769, "_runtime": 7071.819533824921, "_step": 175, "_wandb": {"runtime": 7073}}

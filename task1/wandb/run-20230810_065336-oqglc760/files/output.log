@@ -1,0 +1,7 @@
+
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 242, in <module>
+    main(config, do_eval, save_path)
+  File "/content/drive/MyDrive/fashion-how-2023/Tasks/task1/train.py", line 146, in main
+    daily_acc += accuracy(daily_logit, batch['daily'].to(device))
+TypeError: accuracy() missing 1 required positional argument: 'label'

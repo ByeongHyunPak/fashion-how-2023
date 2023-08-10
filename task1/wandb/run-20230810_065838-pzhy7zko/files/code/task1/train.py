@@ -132,7 +132,6 @@ def main(config, do_eval, save_path):
 
     # -- start training
     batch_augment = Augment(config['augment'])
-    epoch_eval_best_acc = 0.
     for epoch in range(config['epochs']):
 
         # -- valid step
@@ -166,7 +165,7 @@ def main(config, do_eval, save_path):
         # -- train step
         net.train()
         epoch_losses = [0, 0, 0, 0]
-        
+        epoch_eval_best_acc = 0.
         for i, batch in enumerate(tqdm(train_dataloader, leave=False, desc='training')):
             
             for key in batch: batch[key] = batch[key].to(device)
